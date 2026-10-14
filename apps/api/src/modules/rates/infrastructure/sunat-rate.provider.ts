@@ -2,6 +2,8 @@ import { DomainError } from '../../../shared/domain/domain-error';
 import type { RateProvider } from '../application/ports';
 import type { ExchangeRate } from '../domain/exchange-rate';
 
+const maximumResponseBytes = 16 * 1024;
+
 function unavailable(): DomainError {
   return new DomainError(
     'RATE_PROVIDER_UNAVAILABLE',
@@ -59,9 +61,10 @@ export class SunatRateProvider implements RateProvider {
   async fetch(): Promise<Omit<ExchangeRate, 'id' | 'fetchedAt'>> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), this.timeoutMs);
+    let response: Response | undefined;
 
     try {
-      const response = await fetch(this.url, {
+      response = await fetch(this.url, {
         method: 'GET',
         headers: {
           Accept: 'application/json',
@@ -75,7 +78,7 @@ export class SunatRateProvider implements RateProvider {
         throw unavailable();
       }
 
-      const body: unknown = await response.json();
+      const body = await this.readBody(response);
 
       if (!body || typeof body !== 'object' || Array.isArray(body)) {
         throw unavailable();
@@ -101,9 +104,35 @@ export class SunatRateProvider implements RateProvider {
         providerDate: payload.fecha,
       };
     } catch {
+      controller.abort();
+      if (response?.body && !response.body.locked) {
+        void response.body.cancel().catch(() => undefined);
+      }
       throw unavailable();
     } finally {
       clearTimeout(timer);
+    }
+  }
+
+  private async readBody(response: Response): Promise<unknown> {
+    if (!response.body || Number(response.headers.get('content-length')) > maximumResponseBytes) {
+      throw unavailable();
+    }
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let size = 0;
+    let content = '';
+    try {
+      while (true) {
+        const chunk = await reader.read();
+        if (chunk.done) break;
+        size += chunk.value.byteLength;
+        if (size > maximumResponseBytes) throw unavailable();
+        content += decoder.decode(chunk.value, { stream: true });
+      }
+      return JSON.parse(content + decoder.decode()) as unknown;
+    } finally {
+      reader.releaseLock();
     }
   }
 }

@@ -3,6 +3,7 @@ import path from 'node:path';
 import dotenv from 'dotenv';
 import { createApplication } from './bootstrap/application';
 import { loadConfig } from './bootstrap/config';
+import { startupError } from './bootstrap/startup-error';
 
 dotenv.config({ path: path.resolve(__dirname, '../.env'), quiet: true });
 
@@ -18,6 +19,6 @@ async function start(): Promise<void> {
 }
 
 void start().catch((error: unknown) => {
-  process.stderr.write(`${JSON.stringify({ level: 'error', event: 'startup_failed', type: error instanceof Error ? error.name : 'UnknownError' })}\n`);
+  process.stderr.write(`${JSON.stringify({ level: 'error', event: 'startup_failed', ...startupError(error) })}\n`);
   process.exitCode = 1;
 });

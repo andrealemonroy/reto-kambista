@@ -1,5 +1,6 @@
 import { Catch, HttpException, Inject, Injectable, SetMetadata, type ArgumentsHost, type CanActivate, type ExceptionFilter, type ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import { isIP } from 'node:net';
 import type { Request, Response } from 'express';
 import { MongoError } from 'mongodb';
 import type { Actor } from '../shared/domain/actor';
@@ -14,6 +15,14 @@ export interface ActorRequest extends Request {
 }
 
 export const Public = () => SetMetadata('publicRoute', true);
+
+export function authenticationIp(request: ActorRequest, env: NodeJS.ProcessEnv = process.env): string {
+  const clientIp = request.headers['cf-connecting-ip'];
+  if (env.RENDER === 'true' && env.RENDER_SERVICE_TYPE === 'web' && typeof clientIp === 'string' && isIP(clientIp)) {
+    return clientIp;
+  }
+  return request.ip ?? request.socket.remoteAddress ?? 'unknown';
+}
 
 @Injectable()
 export class AccessGuard implements CanActivate {
@@ -41,7 +50,7 @@ export class AuthenticationLimitGuard implements CanActivate {
     const request = context.switchToHttp().getRequest<ActorRequest>();
     const body: unknown = request.body;
     const email = body && typeof body === 'object' ? (body as Record<string, unknown>).email : undefined;
-    const retry = this.limiter.consume(request.ip ?? request.socket.remoteAddress ?? 'unknown', email);
+    const retry = this.limiter.consume(authenticationIp(request), email);
     if (retry !== null) {
       context.switchToHttp().getResponse<Response>().setHeader('Retry-After', String(retry));
       throw new DomainError('REQUEST_LIMIT_EXCEEDED', 'Demasiados intentos. Espera un momento y vuelve a probar.');

@@ -132,6 +132,67 @@ describe('SunatRateProvider', () => {
       });
   });
 
+  it('accepts a JSON response at the 16 KiB boundary', async () => {
+    const json = JSON.stringify(payload);
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(json.padEnd(16 * 1024, ' '))));
+
+    await expect(new SunatRateProvider('https://provider.example/rates', undefined, 5_000).fetch())
+      .resolves.toEqual(rate);
+  });
+
+  it('rejects and cancels an oversized declared response without consuming its body', async () => {
+    const cancel = vi.fn();
+    const stream = new ReadableStream<Uint8Array>({ cancel });
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(stream, {
+      headers: { 'Content-Length': String(16 * 1024 + 1) },
+    })));
+
+    await expect(new SunatRateProvider('https://provider.example/rates', undefined, 5_000).fetch())
+      .rejects.toMatchObject({ code: 'RATE_PROVIDER_UNAVAILABLE' });
+    expect(cancel).toHaveBeenCalledOnce();
+  });
+
+  it.each([undefined, '1'])('stops and cancels an oversized stream with Content-Length %s', async (length) => {
+    let chunks = 0;
+    const cancel = vi.fn();
+    const stream = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        chunks += 1;
+        controller.enqueue(new Uint8Array(4096).fill(32));
+        if (chunks === 100) controller.close();
+      },
+      cancel,
+    });
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(stream, {
+      headers: length ? { 'Content-Length': length } : {},
+    })));
+
+    await expect(new SunatRateProvider('https://provider.example/rates', undefined, 5_000).fetch())
+      .rejects.toMatchObject({ code: 'RATE_PROVIDER_UNAVAILABLE' });
+    expect(cancel).toHaveBeenCalledOnce();
+    expect(chunks).toBeLessThan(100);
+  });
+
+  it('limits UTF-8 bytes rather than JavaScript character count', async () => {
+    const json = JSON.stringify({ ...payload, extra: 'ñ'.repeat(9000) });
+    expect(json.length).toBeLessThan(16 * 1024);
+    expect(new TextEncoder().encode(json).byteLength).toBeGreaterThan(16 * 1024);
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(json)));
+
+    await expect(new SunatRateProvider('https://provider.example/rates', undefined, 5_000).fetch())
+      .rejects.toMatchObject({ code: 'RATE_PROVIDER_UNAVAILABLE' });
+  });
+
+  it('cancels unread error responses', async () => {
+    const cancel = vi.fn();
+    const stream = new ReadableStream<Uint8Array>({ cancel });
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(stream, { status: 503 })));
+
+    await expect(new SunatRateProvider('https://provider.example/rates', undefined, 5_000).fetch())
+      .rejects.toMatchObject({ code: 'RATE_PROVIDER_UNAVAILABLE' });
+    expect(cancel).toHaveBeenCalledOnce();
+  });
+
   it('maps network and redirect failures to a domain error', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('fetch failed')));
 
