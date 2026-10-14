@@ -6,6 +6,5 @@ export default defineConfig({
     include: ['tests/**/*.test.ts'],
     testTimeout: 10000,
     maxWorkers: 1,
-    minWorkers: 1,
   },
 });
