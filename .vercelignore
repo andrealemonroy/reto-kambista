@@ -8,7 +8,6 @@ dist/
 .local-planning/
 coverage/
 test-results/
-playwright-report/
 docs/
 **/docs/
 *.md

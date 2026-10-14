@@ -10,7 +10,6 @@ dist/
 *.mdx
 .runtime/
 coverage/
-playwright-report/
 test-results/
 *.log
 .DS_Store

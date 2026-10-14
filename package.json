@@ -18,12 +18,10 @@
     "test": "npm run test --workspaces --if-present",
     "test:source": "node --test tests/source.test.mjs",
     "test:integration": "npm run build -w @exchange/api && node --test --test-concurrency=1 tests/integration/*.test.cjs",
-    "test:e2e": "playwright test",
     "validate": "npm run lint && npm run typecheck && npm test && npm run test:source && npm run build && npm run test:integration"
   },
   "devDependencies": {
     "@eslint/js": "9.39.0",
-    "@playwright/test": "1.62.1",
     "@types/express": "5.0.3",
     "@types/jsonwebtoken": "9.0.10",
     "@types/node": "22.18.0",

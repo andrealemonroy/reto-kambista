@@ -5,7 +5,7 @@ import { parse } from '@vue/compiler-sfc';
 import { parse as parseTemplate, NodeTypes } from '@vue/compiler-dom';
 import postcss from 'postcss';
 
-const excluded = new Set(['node_modules', 'dist', '.git', '.runtime', '.local-planning', 'coverage', 'playwright-report', 'test-results']);
+const excluded = new Set(['node_modules', 'dist', '.git', '.runtime', '.local-planning', 'coverage', 'test-results']);
 const failures = [];
 
 function inspectScript(source, filename) {
