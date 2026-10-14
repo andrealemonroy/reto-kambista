@@ -1,0 +1,48 @@
+{
+  "name": "kambista-exchange",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "dev:demo": "node scripts/demo.mjs",
+    "dev:local": "node scripts/demo.mjs --live",
+    "build": "npm run build --workspaces",
+    "typecheck": "npm run typecheck --workspaces",
+    "lint": "eslint apps scripts tests && node scripts/check-source.mjs",
+    "test": "npm run test --workspaces --if-present",
+    "test:source": "node --test tests/source.test.mjs",
+    "test:integration": "npm run build -w @exchange/api && node --test --test-concurrency=1 tests/integration/*.test.cjs",
+    "test:e2e": "playwright test",
+    "validate": "npm run lint && npm run typecheck && npm test && npm run test:source && npm run build && npm run test:integration"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.39.0",
+    "@playwright/test": "1.62.1",
+    "@types/express": "5.0.3",
+    "@types/jsonwebtoken": "9.0.10",
+    "@types/node": "22.18.0",
+    "@vitejs/plugin-vue": "6.0.1",
+    "@vue/compiler-dom": "3.5.22",
+    "@vue/compiler-sfc": "3.5.22",
+    "@vue/test-utils": "2.4.6",
+    "concurrently": "9.2.1",
+    "eslint": "9.39.0",
+    "eslint-plugin-vue": "10.5.1",
+    "globals": "16.4.0",
+    "jsdom": "27.0.0",
+    "mongodb-memory-server": "10.2.0",
+    "postcss": "8.5.30",
+    "supertest": "7.1.4",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.46.1",
+    "vite": "7.1.10",
+    "vitest": "3.2.4",
+    "vue-tsc": "3.1.1"
+  }
+}
