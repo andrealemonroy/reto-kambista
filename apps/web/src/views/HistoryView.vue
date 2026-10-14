@@ -75,6 +75,7 @@ onMounted(() => { void applyFilters(); });
             id="history-start"
             v-model="startDate"
             name="startDate"
+            required
             type="date"
             :aria-invalid="Boolean(errors.startDate)"
             :aria-describedby="errors.startDate ? 'history-start-error' : undefined"
@@ -91,6 +92,7 @@ onMounted(() => { void applyFilters(); });
             id="history-end"
             v-model="endDate"
             name="endDate"
+            required
             type="date"
             :aria-invalid="Boolean(errors.endDate)"
             :aria-describedby="errors.endDate ? 'history-end-error' : undefined"

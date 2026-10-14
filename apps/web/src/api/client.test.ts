@@ -44,6 +44,15 @@ describe('cliente HTTP', () => {
     await expect(api.history({ startDate: '2026-10-01', endDate: '2026-10-14' }, 'token')).rejects.toEqual(new NetworkError(false));
   });
 
+  it.each(['network', 'invalid-success-body'])('marca un registro sin respuesta fiable como incierto: %s', async (failure) => {
+    const fetchMock = failure === 'network'
+      ? vi.fn().mockRejectedValue(new TypeError('Network failed'))
+      : vi.fn().mockResolvedValue(new Response('invalid json', { status: 201 }));
+    vi.stubGlobal('fetch', fetchMock);
+    await expect(api.register({ nombre: 'Andrea', email: 'andrea@example.com', password: 'password123' })).rejects.toMatchObject({ uncertain: true, operation: 'registration' });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it('retiene el estado HTTP 401 incluso si el servicio devuelve un cuerpo inválido', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('invalid json', { status: 401 })));
     await expect(api.history({ startDate: '2026-10-01', endDate: '2026-10-14' }, 'token')).rejects.toEqual(new ApiError(401, 'INVALID_RESPONSE', 'El servicio no pudo completar la solicitud.'));

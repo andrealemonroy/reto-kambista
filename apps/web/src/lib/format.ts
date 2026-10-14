@@ -1,5 +1,3 @@
-import type { Currency } from '../api/types';
-
 export function formatAmount(value: number): string {
   return new Intl.NumberFormat('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
 }
@@ -10,10 +8,6 @@ export function formatRate(value: number): string {
 
 export function formatDate(value: string): string {
   return new Intl.DateTimeFormat('es-PE', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'America/Lima' }).format(new Date(value));
-}
-
-export function currencyName(currency: Currency): string {
-  return currency === 'USD' ? 'Dólares' : 'Soles';
 }
 
 export function defaultDateRange(now = new Date()): { startDate: string; endDate: string } {

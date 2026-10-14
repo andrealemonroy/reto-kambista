@@ -14,9 +14,14 @@ export class ApiError extends Error {
 }
 
 export class NetworkError extends Error {
-  constructor(public readonly uncertain: boolean) {
+  constructor(
+    public readonly uncertain: boolean,
+    public readonly operation: 'transaction' | 'registration' = 'transaction',
+  ) {
     super(uncertain
-      ? 'No pudimos confirmar el resultado. La solicitud podría haberse registrado. Revisa tu historial antes de intentarlo otra vez.'
+      ? operation === 'registration'
+        ? 'No pudimos confirmar el registro. Intenta iniciar sesión.'
+        : 'No pudimos confirmar el resultado. La solicitud podría haberse registrado. Revisa tu historial antes de intentarlo otra vez.'
       : 'No pudimos conectar con el servicio. Revisa tu conexión e inténtalo nuevamente.');
     this.name = 'NetworkError';
   }

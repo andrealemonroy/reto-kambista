@@ -101,6 +101,7 @@ async function submitForm() {
                 id="exchange-origin"
                 v-model="origin"
                 name="monedaOrigen"
+                required
                 :disabled="submitting"
                 :aria-invalid="Boolean(errors.monedaOrigen)"
                 :aria-describedby="errors.monedaOrigen ? 'exchange-origin-error' : undefined"
@@ -142,6 +143,7 @@ async function submitForm() {
                 id="exchange-destination"
                 v-model="destination"
                 name="monedaDestino"
+                required
                 :disabled="submitting"
                 :aria-invalid="Boolean(errors.monedaDestino)"
                 :aria-describedby="errors.monedaDestino ? 'exchange-destination-error' : undefined"
@@ -174,6 +176,7 @@ async function submitForm() {
                 id="exchange-amount"
                 v-model="amount"
                 name="monto"
+                required
                 type="text"
                 inputmode="decimal"
                 autocomplete="off"

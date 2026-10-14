@@ -11,6 +11,8 @@ interface RequestOptions {
 }
 
 export async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  const uncertain = options.method === 'POST' && (path === '/v1/transactions' || path === '/v1/auth/register');
+  const operation = path === '/v1/auth/register' ? 'registration' : 'transaction';
   const controller = new AbortController();
   const timeout = globalThis.setTimeout(() => controller.abort(), 15_000);
   const abort = () => controller.abort();
@@ -31,14 +33,14 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
         cache: 'no-store',
       });
     } catch {
-      throw new NetworkError(options.method === 'POST' && path === '/v1/transactions');
+      throw new NetworkError(uncertain, operation);
     }
 
     let data: unknown;
     try {
       data = await response.json();
     } catch {
-      if (response.ok) throw new NetworkError(options.method === 'POST' && path === '/v1/transactions');
+      if (response.ok) throw new NetworkError(uncertain, operation);
       throw new ApiError(response.status, 'INVALID_RESPONSE', 'El servicio no pudo completar la solicitud.');
     }
 

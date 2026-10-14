@@ -2,7 +2,7 @@
 import { computed, nextTick, onScopeDispose, ref } from 'vue';
 import { RouterLink, useRoute, useRouter } from 'vue-router';
 import { api } from '../api/client';
-import { ApiError, SupersededRequestError, errorMessage } from '../api/errors';
+import { ApiError, NetworkError, SupersededRequestError, errorMessage } from '../api/errors';
 import type { FieldErrors } from '../api/types';
 import { safeReturnPath } from '../lib/validation';
 import { useAuthStore } from '../stores/auth';
@@ -12,6 +12,8 @@ const auth = useAuthStore();
 const route = useRoute();
 const router = useRouter();
 const registering = computed(() => props.mode === 'register');
+const returnQuery = computed(() => route.query.redirect === undefined ? {} : { redirect: safeReturnPath(route.query.redirect) });
+const authSwitchTarget = computed(() => ({ name: registering.value ? 'login' : 'register', query: returnQuery.value }));
 const nombre = ref('');
 const email = ref('');
 const password = ref('');
@@ -19,6 +21,7 @@ const passwordVisible = ref(false);
 const loading = ref(false);
 const errors = ref<FieldErrors>({});
 const message = ref('');
+const registrationUncertain = ref(false);
 const requestId = ref<string | undefined>();
 const summary = ref<HTMLElement | null>(null);
 let controller: AbortController | undefined;
@@ -32,6 +35,7 @@ async function submit() {
   if (loading.value) return;
   errors.value = {};
   message.value = '';
+  registrationUncertain.value = false;
   requestId.value = undefined;
   if (registering.value && (nombre.value.trim().length < 2 || nombre.value.trim().length > 80)) errors.value.nombre = 'Ingresa un nombre de entre 2 y 80 caracteres.';
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value.trim()) || email.value.trim().length > 254) errors.value.email = 'Ingresa un correo electrónico válido.';
@@ -52,7 +56,7 @@ async function submit() {
       await api.register({ nombre: nombre.value.trim(), email: email.value.trim().toLowerCase(), password: password.value }, activeController.signal);
       if (activeController.signal.aborted) return;
       password.value = '';
-      await router.replace({ name: 'login', query: { registered: 'true' } });
+      await router.replace({ name: 'login', query: { registered: 'true', ...returnQuery.value } });
     } else {
       await auth.login(email.value.trim().toLowerCase(), password.value, activeController.signal);
       if (activeController.signal.aborted) return;
@@ -62,6 +66,7 @@ async function submit() {
   } catch (caught) {
     if (activeController.signal.aborted || caught instanceof SupersededRequestError) return;
     message.value = errorMessage(caught);
+    registrationUncertain.value = registering.value && caught instanceof NetworkError && caught.uncertain && caught.operation === 'registration';
     if (caught instanceof ApiError) {
       errors.value = caught.fields;
       requestId.value = caught.requestId;
@@ -101,11 +106,19 @@ async function submit() {
         <div
           v-if="message"
           ref="summary"
-          class="notice notice-error"
+          class="notice"
+          :class="registrationUncertain ? 'notice-warning' : 'notice-error'"
           role="alert"
           tabindex="-1"
         >
           {{ message }}
+          <RouterLink
+            v-if="registrationUncertain"
+            class="inline-action"
+            :to="authSwitchTarget"
+          >
+            Iniciar sesión
+          </RouterLink>
           <small
             v-if="requestId"
             class="request-reference"
@@ -127,6 +140,7 @@ async function submit() {
               v-model="nombre"
               name="nombre"
               autocomplete="name"
+              required
               placeholder="¿Cómo te llamas?"
               :disabled="loading"
               :aria-invalid="Boolean(errors.nombre)"
@@ -149,6 +163,7 @@ async function submit() {
               type="email"
               autocomplete="email"
               inputmode="email"
+              required
               placeholder="tu@correo.com"
               :disabled="loading"
               :aria-invalid="Boolean(errors.email)"
@@ -169,6 +184,7 @@ async function submit() {
                 id="auth-password"
                 v-model="password"
                 name="password"
+                required
                 :type="passwordVisible ? 'text' : 'password'"
                 :autocomplete="registering ? 'new-password' : 'current-password'"
                 :placeholder="registering ? 'Crea una contraseña segura' : 'Ingresa tu contraseña'"
@@ -217,7 +233,7 @@ async function submit() {
         </form>
         <p class="auth-switch">
           {{ registering ? '¿Ya tienes cuenta?' : '¿No tienes cuenta?' }}
-          <RouterLink :to="registering ? '/login' : '/register'">
+          <RouterLink :to="authSwitchTarget">
             {{ registering ? 'Inicia sesión' : 'Crea tu cuenta' }}
           </RouterLink>
         </p>
